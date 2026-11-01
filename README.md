@@ -15,7 +15,8 @@ and check it against `luaskills-debug-checksums.txt`. Platforms: `windows-x64`, 
 executable ships with a detached OpenPGP signature, `bin/luaskills-debug.asc`.
 
 The archive holds `bin/luaskills-debug`, launcher scripts (`debug.ps1`, `debug.sh`), `setup_runtime` scripts
-that fetch Lua runtime packages into the bundled `runtime/` folder, and a `skills/` folder for one skill to debug.
+that fetch Lua runtime packages into the bundled `runtime/` folder, `scripts/deps/fetch_managed_runtimes.*` for the
+managed Python and Node runtimes a skill declares, and a `skills/` folder for one skill to debug.
 
 ## Commands
 
