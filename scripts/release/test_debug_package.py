@@ -35,7 +35,7 @@ class DebugPackageTests(unittest.TestCase):
         # Repository supplies the actual current scripts, including uncommitted fixes.
         # 仓库提供实际当前脚本，包括尚未提交的修复。
         repository = Path(__file__).resolve().parents[2]
-        for relative in ["Cargo.toml", "LICENSE", "scripts/build/package_debug_tool.ps1", "scripts/build/package_debug_tool.sh", "scripts/build/project_root.ps1", "scripts/build/archive_helpers.ps1", "scripts/deps/fetch_deps.ps1", "scripts/deps/fetch_deps.sh"]:
+        for relative in ["Cargo.toml", "LICENSE", "scripts/build/package_debug_tool.ps1", "scripts/build/package_debug_tool.sh", "scripts/build/project_root.ps1", "scripts/build/archive_helpers.ps1", "scripts/deps/fetch_deps.ps1", "scripts/deps/fetch_deps.sh", "scripts/deps/fetch_managed_runtimes.ps1", "scripts/deps/fetch_managed_runtimes.sh"]:
             # Keep the documented source layout expected by the packager's root resolver.
             # 保持打包器根解析器预期的文档化源码布局。
             destination = self.root / relative

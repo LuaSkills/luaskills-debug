@@ -950,10 +950,14 @@ if (-not (Test-Path -LiteralPath $DebugBinaryPath)) {
 
 Copy-Item -Force -LiteralPath $DebugBinaryPath -Destination (Join-Path $PackageRoot "bin\$DebugBinaryName")
 Copy-Item -Force -LiteralPath "LICENSE" -Destination (Join-Path $PackageRoot "licenses\LICENSE")
+# fetch_managed_runtimes installs the managed Python and Node runtimes a skill's dependencies.yaml declares.
+# fetch_managed_runtimes 安装技能 dependencies.yaml 声明的受管 Python 与 Node 运行时。
 if (Test-WindowsPackagePlatform -PlatformKey $Platform) {
     Copy-Item -Force -LiteralPath "scripts\deps\fetch_deps.ps1" -Destination (Join-Path $PackageRoot "scripts\deps\fetch_deps.ps1")
+    Copy-Item -Force -LiteralPath "scripts\deps\fetch_managed_runtimes.ps1" -Destination (Join-Path $PackageRoot "scripts\deps\fetch_managed_runtimes.ps1")
 } else {
     Copy-Item -Force -LiteralPath "scripts\deps\fetch_deps.sh" -Destination (Join-Path $PackageRoot "scripts\deps\fetch_deps.sh")
+    Copy-Item -Force -LiteralPath "scripts\deps\fetch_managed_runtimes.sh" -Destination (Join-Path $PackageRoot "scripts\deps\fetch_managed_runtimes.sh")
 }
 
 Write-DebugRuntimeSetupScripts -PackageRoot $PackageRoot -PlatformKey $Platform -ReleaseTag $ReleaseTag

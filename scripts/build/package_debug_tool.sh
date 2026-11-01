@@ -857,11 +857,15 @@ if [ -f "$DEBUG_BINARY_PATH.asc" ]; then
   cp -f "$DEBUG_BINARY_PATH.asc" "$PACKAGE_ROOT/bin/$DEBUG_BINARY_NAME.asc"
 fi
 cp -f LICENSE "$PACKAGE_ROOT/licenses/LICENSE"
+# fetch_managed_runtimes installs the managed Python and Node runtimes a skill's dependencies.yaml declares.
+# fetch_managed_runtimes 安装技能 dependencies.yaml 声明的受管 Python 与 Node 运行时。
 if platform_is_windows; then
   cp -f scripts/deps/fetch_deps.ps1 "$PACKAGE_ROOT/scripts/deps/fetch_deps.ps1"
+  cp -f scripts/deps/fetch_managed_runtimes.ps1 "$PACKAGE_ROOT/scripts/deps/fetch_managed_runtimes.ps1"
 else
   cp -f scripts/deps/fetch_deps.sh "$PACKAGE_ROOT/scripts/deps/fetch_deps.sh"
-  chmod +x "$PACKAGE_ROOT/scripts/deps/fetch_deps.sh"
+  cp -f scripts/deps/fetch_managed_runtimes.sh "$PACKAGE_ROOT/scripts/deps/fetch_managed_runtimes.sh"
+  chmod +x "$PACKAGE_ROOT/scripts/deps/fetch_deps.sh" "$PACKAGE_ROOT/scripts/deps/fetch_managed_runtimes.sh"
 fi
 
 write_debug_runtime_setup_scripts "$PACKAGE_ROOT"
