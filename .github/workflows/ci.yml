@@ -47,6 +47,11 @@ jobs:
         run: |
           python -X utf8 -m unittest discover -s scripts/release -p "test_*.py" -v
           if ($LASTEXITCODE -ne 0) { throw "Release helper regressions failed" }
+      # The shipped fetcher must run on the Bash 3.2 that macOS installs as /bin/bash.
+      # 随包发布的获取脚本必须能在 macOS 自带的 /bin/bash（Bash 3.2）上运行。
+      - name: Fetch the Lua runtime with the system Bash
+        if: runner.os == 'macOS'
+        run: RUNTIME_ROOT="$RUNNER_TEMP/lua-runtime" /bin/bash ./scripts/deps/fetch_deps.sh lua
 
   # The managed Python/Node smoke downloads exact runtimes, so it runs only on request.
   # 受管 Python/Node 冒烟会下载精确版本运行时，因此仅在手动请求时运行。

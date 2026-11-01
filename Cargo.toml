@@ -2,7 +2,7 @@
 name = "luaskills-debug"
 # Major and minor follow the LuaSkills runtime this tool embeds; the patch number moves on its own.
 # 主次版本跟随本工具内嵌的 LuaSkills 运行时；补丁号独立递增。
-version = "0.8.0"
+version = "0.8.1"
 edition = "2024"
 rust-version = "1.94"
 license = "MIT"

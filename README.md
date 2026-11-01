@@ -74,7 +74,7 @@ Skill repositories build releases with this repository's composite action:
 ```yaml
 - uses: actions/checkout@v4
 - id: package
-  uses: LuaSkills/luaskills-debug@v0.8.0
+  uses: LuaSkills/luaskills-debug@v0.8.1
   with:
     layout: standard        # or platform
     expect-tag: ${{ github.ref_name }}
@@ -96,7 +96,7 @@ commit `Cargo.lock` while the patch is active.
 ```bash
 cargo test
 cargo build --release
-bash scripts/build/package_debug_tool.sh linux-x64 v0.8.0 target/release-packages
+bash scripts/build/package_debug_tool.sh linux-x64 v0.8.1 target/release-packages
 ```
 
 The managed Python/Node runtime example and its smoke scripts are described in
