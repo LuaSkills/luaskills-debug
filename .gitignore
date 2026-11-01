@@ -1,0 +1,7 @@
+/target
+/dist
+__pycache__/
+*.pdb
+# Local runtime overrides such as a [patch.crates-io] path to a LuaSkills checkout.
+# 本地运行时覆盖，例如指向 LuaSkills 检出目录的 [patch.crates-io]。
+/.cargo/config.toml

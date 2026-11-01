@@ -1,0 +1,134 @@
+name: LuaSkills package
+description: Validate a LuaSkills skill and build its release packages with luaskills-debug.
+author: LuaSkills
+branding:
+  icon: package
+  color: orange
+
+inputs:
+  skill-path:
+    description: Skill source directory that contains skill.yaml.
+    default: "."
+  layout:
+    description: "standard: one package for every system. platform: one package per system plus a package index."
+    default: standard
+  include-universal:
+    description: With the platform layout, also build the all-systems package for systems without their own package.
+    default: "true"
+  out-dir:
+    description: Directory that receives the release assets.
+    default: dist
+  skill-id:
+    description: Explicit skill id; the skill directory name when empty.
+    default: ""
+  include:
+    description: Extra top-level entries to ship, one per line.
+    default: ""
+  expect-tag:
+    description: Fail when this release tag does not match the skill.yaml version.
+    default: ""
+  version:
+    description: luaskills-debug release tag to use, such as v0.8.0. Defaults to the action ref when it is a release tag, otherwise the latest release.
+    default: ""
+
+outputs:
+  out-dir:
+    description: Directory that holds the release assets.
+    value: ${{ steps.package.outputs.out-dir }}
+  report:
+    description: Path of the JSON package report.
+    value: ${{ steps.package.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - name: Download luaskills-debug
+      id: tool
+      shell: bash
+      env:
+        REQUESTED_VERSION: ${{ inputs.version }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        set -euo pipefail
+        case "${RUNNER_OS}-${RUNNER_ARCH}" in
+          Linux-X64) platform=linux-x64 ;;
+          Linux-ARM64) platform=linux-arm64 ;;
+          macOS-X64) platform=macos-x64 ;;
+          macOS-ARM64) platform=macos-arm64 ;;
+          Windows-X64) platform=windows-x64 ;;
+          *) echo "luaskills-debug has no release for ${RUNNER_OS}-${RUNNER_ARCH}" >&2; exit 1 ;;
+        esac
+        version="${REQUESTED_VERSION}"
+        if [ -z "$version" ] && [[ "${ACTION_REF}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          version="${ACTION_REF}"
+        fi
+        if [ -n "$version" ]; then
+          base="https://github.com/LuaSkills/luaskills-debug/releases/download/${version}"
+        else
+          base="https://github.com/LuaSkills/luaskills-debug/releases/latest/download"
+        fi
+        archive="luaskills-debug-tool-${platform}.tar.gz"
+        work="${RUNNER_TEMP}/luaskills-debug"
+        rm -rf "$work"
+        mkdir -p "$work/tool"
+        curl -fsSL --retry 3 -o "$work/$archive" "$base/$archive"
+        curl -fsSL --retry 3 -o "$work/luaskills-debug-checksums.txt" "$base/luaskills-debug-checksums.txt"
+        expected="$(awk -v name="$archive" '$2 == name { print $1 }' "$work/luaskills-debug-checksums.txt")"
+        if [ -z "$expected" ]; then
+          echo "luaskills-debug-checksums.txt does not list $archive" >&2
+          exit 1
+        fi
+        if command -v sha256sum >/dev/null 2>&1; then
+          actual="$(sha256sum "$work/$archive" | awk '{ print $1 }')"
+        else
+          actual="$(shasum -a 256 "$work/$archive" | awk '{ print $1 }')"
+        fi
+        if [ "$actual" != "$expected" ]; then
+          echo "SHA-256 mismatch for $archive" >&2
+          exit 1
+        fi
+        tar -xzf "$work/$archive" -C "$work/tool"
+        binary="$work/tool/bin/luaskills-debug"
+        if [ "$platform" = windows-x64 ]; then
+          binary="$binary.exe"
+        fi
+        echo "binary=$binary" >> "$GITHUB_OUTPUT"
+
+    - name: Validate and package
+      id: package
+      shell: bash
+      env:
+        LUASKILLS_DEBUG: ${{ steps.tool.outputs.binary }}
+        SKILL_PATH: ${{ inputs.skill-path }}
+        LAYOUT: ${{ inputs.layout }}
+        INCLUDE_UNIVERSAL: ${{ inputs.include-universal }}
+        OUT_DIR: ${{ inputs.out-dir }}
+        SKILL_ID: ${{ inputs.skill-id }}
+        INCLUDE: ${{ inputs.include }}
+        EXPECT_TAG: ${{ inputs.expect-tag }}
+      run: |
+        set -euo pipefail
+        source_args=(--skill-path "$SKILL_PATH")
+        if [ -n "$SKILL_ID" ]; then
+          source_args+=(--skill-id "$SKILL_ID")
+        fi
+        while IFS= read -r entry; do
+          entry="${entry#"${entry%%[![:space:]]*}"}"
+          entry="${entry%"${entry##*[![:space:]]}"}"
+          if [ -n "$entry" ]; then
+            source_args+=(--include "$entry")
+          fi
+        done <<< "$INCLUDE"
+        "$LUASKILLS_DEBUG" validate "${source_args[@]}"
+        package_args=(--out-dir "$OUT_DIR" --layout "$LAYOUT")
+        if [ "$LAYOUT" = platform ] && [ "$INCLUDE_UNIVERSAL" = false ]; then
+          package_args+=(--no-universal)
+        fi
+        if [ -n "$EXPECT_TAG" ]; then
+          package_args+=(--expect-tag "$EXPECT_TAG")
+        fi
+        report="${RUNNER_TEMP}/luaskills-package-report.json"
+        "$LUASKILLS_DEBUG" package "${source_args[@]}" "${package_args[@]}" --output json > "$report"
+        cat "$report"
+        echo "out-dir=$OUT_DIR" >> "$GITHUB_OUTPUT"
+        echo "report=$report" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,181 @@
+name: Release
+
+# Builds stay workflow artifacts unless a draft release is explicitly requested; publishing the draft is manual.
+# 构建默认保留为工作流产物，只有显式请求时才创建草稿发布；草稿的正式发布由人工完成。
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Exact Cargo package version, without v prefix"
+        required: true
+        type: string
+      mode:
+        description: "Build artifacts only, or create a draft GitHub release after all gates"
+        required: true
+        default: candidate
+        type: choice
+        options: [candidate, draft]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: luaskills-debug-release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  freeze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.6"
+      - name: Require the requested version to match Cargo.toml
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          actual="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -1)"
+          if [ "$actual" != "$REQUESTED_VERSION" ]; then
+            echo "Cargo.toml version $actual differs from the requested $REQUESTED_VERSION" >&2
+            exit 1
+          fi
+          test -f Cargo.lock || { echo "Cargo.lock must be committed for a locked release build" >&2; exit 1; }
+      - name: Run release helper regressions
+        run: python -X utf8 -m unittest discover -s scripts/release -p "test_*.py" -v
+
+  build:
+    needs: freeze
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-x64
+            runner: macos-15-intel
+          - platform: macos-arm64
+            runner: macos-15
+          - platform: windows-x64
+            runner: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      # MSVC setup exports PLATFORM=x64; keep the release platform key in a dedicated variable.
+      # MSVC 初始化会导出 PLATFORM=x64；发布平台键使用独立变量。
+      LUASKILLS_DEBUG_PLATFORM: ${{ matrix.platform }}
+      RELEASE_PACKAGE_DIR: target/release-packages
+    steps:
+      - name: Preserve exact tracked source bytes
+        shell: pwsh
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.6"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.94.0
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Build the locked release executable
+        shell: pwsh
+        run: |
+          # Static CRT avoids an undeclared VC++ redistributable prerequisite for the Windows package.
+          # 静态 CRT 避免 Windows 包产生未声明的 VC++ 运行库安装前提。
+          if ($IsWindows) { $env:RUSTFLAGS = "$env:RUSTFLAGS -C target-feature=+crt-static".Trim() }
+          cargo build --locked --release --bin luaskills-debug -j 4
+          if ($LASTEXITCODE -ne 0) { throw "Release build failed" }
+          if ($IsWindows) {
+            $Imports = & dumpbin /DEPENDENTS target/release/luaskills-debug.exe
+            if ($LASTEXITCODE -ne 0 -or ($Imports -match '(?i)(vcruntime|msvcp|msvcr)[0-9_]*\.dll')) { throw "The executable still needs a VC++ runtime DLL" }
+          }
+      # The Windows executable is signed in place before packaging, so the archive carries the signed bytes.
+      # Windows 可执行文件在打包前原地签名，归档因此携带已签名字节。
+      - name: Install pinned SimplySign Desktop
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/release/sign_windows.ps1 -Phase Install -EvidenceDirectory "$env:RUNNER_TEMP/certum-evidence"
+      - name: Sign and verify the Windows executable with Certum
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CERTUM_TOTP_EMAIL: ${{ secrets.CERTUM_TOTP_EMAIL }}
+          CERTUM_TOTP_SECRET: ${{ secrets.CERTUM_TOTP_SECRET }}
+        run: ./scripts/release/sign_windows.ps1 -Phase Sign -EvidenceDirectory "$env:RUNNER_TEMP/certum-evidence" -Files @('target/release/luaskills-debug.exe')
+      # The Linux executable gets a detached OpenPGP signature that packaging places beside the binary.
+      # Linux 可执行文件获得分离式 OpenPGP 签名，打包时放在二进制旁。
+      - name: Sign and verify the Linux executable with the pinned OpenPGP key
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: python3 scripts/release/release_gpg.py sign target/release/luaskills-debug
+      - name: Package on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/build/package_debug_tool.ps1 -Platform $env:LUASKILLS_DEBUG_PLATFORM -OutputDir $env:RELEASE_PACKAGE_DIR -ReleaseTag "v$env:VERSION"
+      - name: Package on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: bash scripts/build/package_debug_tool.sh "$LUASKILLS_DEBUG_PLATFORM" "v$VERSION" "$RELEASE_PACKAGE_DIR"
+      # Execute the extracted launchers before upload; SQLite must work without bootstrap.
+      # 上传前执行解包后的启动器；SQLite 必须无需初始化即可使用。
+      - name: Verify the packaged archive offline
+        shell: pwsh
+        run: |
+          $VerifyArgs = @('--archive', "$env:RELEASE_PACKAGE_DIR/luaskills-debug-tool-$env:LUASKILLS_DEBUG_PLATFORM.tar.gz", '--platform', $env:LUASKILLS_DEBUG_PLATFORM)
+          if ($IsWindows) { $VerifyArgs += @('--bash', 'C:/Program Files/Git/bin/bash.exe') }
+          python -X utf8 scripts/release/verify_debug_package.py @VerifyArgs
+          if ($LASTEXITCODE -ne 0) { throw "Packaged archive verification failed" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luaskills-debug-${{ matrix.platform }}
+          path: target/release-packages/luaskills-debug-tool-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: luaskills-debug-*
+          path: dist
+          merge-multiple: true
+      - name: Write checksums for every archive
+        run: |
+          cd dist
+          test "$(ls luaskills-debug-tool-*.tar.gz | wc -l)" -eq 5
+          sha256sum luaskills-debug-tool-*.tar.gz | sort -k2 > luaskills-debug-checksums.txt
+          cat luaskills-debug-checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luaskills-debug-release-${{ inputs.version }}
+          path: dist/
+          if-no-files-found: error
+      - name: Create the draft GitHub release
+        if: inputs.mode == 'draft'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "v$VERSION"
+          --repo "$GITHUB_REPOSITORY"
+          --draft
+          --target "$GITHUB_SHA"
+          --title "luaskills-debug v$VERSION"
+          --generate-notes
+          dist/*

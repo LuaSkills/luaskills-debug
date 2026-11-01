@@ -1,0 +1,40 @@
+ffi_dependencies:
+  # Bundled libraries ship inside the skill package. With the platform layout, each system's package
+  # carries only its own library; put the compiled files at the paths below before packaging.
+  - name: {{SKILL_ID}}-native
+    version: "0.1.0"
+    required: true
+    scope: skill
+    source:
+      type: bundled
+    packages:
+      windows-x64:
+        archive_type: raw
+        path: native/windows-x64/{{LIB_STEM}}.dll
+        exports:
+          - archive_path: {{LIB_STEM}}.dll
+            target_path: lib/{{LIB_STEM}}.dll
+      linux-x64:
+        archive_type: raw
+        path: native/linux-x64/lib{{LIB_STEM}}.so
+        exports:
+          - archive_path: lib{{LIB_STEM}}.so
+            target_path: lib/lib{{LIB_STEM}}.so
+      linux-arm64:
+        archive_type: raw
+        path: native/linux-arm64/lib{{LIB_STEM}}.so
+        exports:
+          - archive_path: lib{{LIB_STEM}}.so
+            target_path: lib/lib{{LIB_STEM}}.so
+      macos-x64:
+        archive_type: raw
+        path: native/macos-x64/lib{{LIB_STEM}}.dylib
+        exports:
+          - archive_path: lib{{LIB_STEM}}.dylib
+            target_path: lib/lib{{LIB_STEM}}.dylib
+      macos-arm64:
+        archive_type: raw
+        path: native/macos-arm64/lib{{LIB_STEM}}.dylib
+        exports:
+          - archive_path: lib{{LIB_STEM}}.dylib
+            target_path: lib/lib{{LIB_STEM}}.dylib

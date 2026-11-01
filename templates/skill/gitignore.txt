@@ -1,0 +1,12 @@
+# Release packages written by luaskills-debug package
+dist/
+
+# Local debug runtime roots
+.luaskills-debug/
+
+# Generated dependency trees
+node_modules/
+.pnpm-store/
+__pycache__/
+*.pyc
+.DS_Store

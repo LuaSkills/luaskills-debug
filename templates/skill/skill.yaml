@@ -1,0 +1,23 @@
+name: {{SKILL_NAME}}
+version: 0.1.0
+enable: true
+debug: false
+help:
+  main:
+    description: Main help node for the {{SKILL_ID}} skill.
+    file: help/help.md
+  topics:
+    - name: hello
+      description: Explain the starter hello tool.
+      file: help/hello.md
+entries:
+  - name: hello
+    description: Return one greeting; replace it with your first real tool.
+    lua_entry: runtime/hello.lua
+    lua_module: hello
+    help: hello
+    parameters:
+      - name: name
+        type: string
+        description: Optional name greeted by the tool.
+        required: false

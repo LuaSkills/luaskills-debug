@@ -1,0 +1,4 @@
+# Copy to .cargo/config.toml to build against a local LuaSkills checkout before its version is on crates.io.
+# 复制为 .cargo/config.toml，可在对应版本发布到 crates.io 之前针对本地 LuaSkills 检出构建。
+[patch.crates-io]
+luaskills = { path = "../vulcan-luaskills" }
