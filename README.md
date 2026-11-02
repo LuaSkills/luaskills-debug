@@ -4,8 +4,8 @@
 It runs a skill through the same load and call path a host uses, checks a skill source against the packaging
 rules, builds release packages, and creates new skills from a template.
 
-It embeds the LuaSkills runtime as a library. Its major and minor version follow that runtime: 0.8.x embeds
-`luaskills` 0.8.0, and only the patch number moves on its own.
+It embeds the LuaSkills runtime as a library. Its major and minor version follow that runtime: 0.8.2 embeds
+`luaskills` 0.8.2, and only the patch number moves on its own.
 
 ## Install
 
@@ -74,7 +74,7 @@ Skill repositories build releases with this repository's composite action:
 ```yaml
 - uses: actions/checkout@v4
 - id: package
-  uses: LuaSkills/luaskills-debug@v0.8.1
+  uses: LuaSkills/luaskills-debug@v0.8.2
   with:
     layout: standard        # or platform
     expect-tag: ${{ github.ref_name }}
@@ -96,7 +96,7 @@ commit `Cargo.lock` while the patch is active.
 ```bash
 cargo test
 cargo build --release
-bash scripts/build/package_debug_tool.sh linux-x64 v0.8.1 target/release-packages
+bash scripts/build/package_debug_tool.sh linux-x64 v0.8.2 target/release-packages
 ```
 
 The managed Python/Node runtime example and its smoke scripts are described in
