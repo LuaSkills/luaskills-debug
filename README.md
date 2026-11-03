@@ -4,8 +4,9 @@
 It runs a skill through the same load and call path a host uses, checks a skill source against the packaging
 rules, builds release packages, and creates new skills from a template.
 
-It embeds the LuaSkills runtime as a library. Its major and minor version follow that runtime: 0.8.2 embeds
-`luaskills` 0.8.2, and only the patch number moves on its own.
+It embeds the LuaSkills runtime as a library. Its major and minor version follow that runtime: 0.9.x embeds
+`luaskills` 0.9.x, and only the patch number moves on its own. A core patch release is followed
+automatically (see Releases below); a new core minor series is adopted by hand.
 
 ## Install
 
@@ -74,7 +75,7 @@ Skill repositories build releases with this repository's composite action:
 ```yaml
 - uses: actions/checkout@v4
 - id: package
-  uses: LuaSkills/luaskills-debug@v0.8.2
+  uses: LuaSkills/luaskills-debug@v0.9.0
   with:
     layout: standard        # or platform
     expect-tag: ${{ github.ref_name }}
@@ -96,15 +97,23 @@ commit `Cargo.lock` while the patch is active.
 ```bash
 cargo test
 cargo build --release
-bash scripts/build/package_debug_tool.sh linux-x64 v0.8.2 target/release-packages
+bash scripts/build/package_debug_tool.sh linux-x64 v0.9.0 target/release-packages
 ```
 
 The managed Python/Node runtime example and its smoke scripts are described in
 [docs/managed-runtime-smoke.md](docs/managed-runtime-smoke.md).
 
 Releases run from the **Release** workflow: it builds all five platforms, signs the Windows and Linux executables,
-verifies each packaged archive, and creates a draft GitHub release. Signing needs the repository secrets
-`CERTUM_TOTP_EMAIL`, `CERTUM_TOTP_SECRET`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE`.
+verifies each packaged archive, and creates a draft GitHub release (`mode: draft`) or publishes it (`mode: publish`).
+Signing needs the repository secrets `CERTUM_TOTP_EMAIL`, `CERTUM_TOTP_SECRET`, `GPG_PRIVATE_KEY` and
+`GPG_PASSPHRASE`.
+
+The **Follow core patches** workflow runs every six hours, on demand, or on a `luaskills-core-released`
+repository dispatch. It looks up the newest non-yanked `luaskills` patch on crates.io in the embedded series
+(`scripts/release/follow_core.py`). When that is newer than the pin, it pins it, bumps the debugger patch, runs
+the tests, commits to `main` and starts the Release workflow with `mode: publish`. LuaSkills core keeps the
+contract and API of a series unchanged across patches, so no manual edit is needed. A new minor series may change
+the API and is adopted with a manual `Cargo.toml` bump and release.
 
 ## License
 

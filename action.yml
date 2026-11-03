@@ -28,7 +28,7 @@ inputs:
     description: Fail when this release tag does not match the skill.yaml version.
     default: ""
   version:
-    description: luaskills-debug release tag to use, such as v0.8.2. Defaults to the action ref when it is a release tag, otherwise the latest release.
+    description: luaskills-debug release tag to use, such as v0.9.0. Defaults to the action ref when it is a release tag, otherwise the latest release.
     default: ""
 
 outputs:
