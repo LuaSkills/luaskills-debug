@@ -1,7 +1,9 @@
 name: Release
 
-# Builds stay workflow artifacts unless a draft release is explicitly requested; publishing the draft is manual.
-# 构建默认保留为工作流产物，只有显式请求时才创建草稿发布；草稿的正式发布由人工完成。
+# Builds stay workflow artifacts unless a draft or a published release is explicitly requested. Manual releases
+# use a draft; the Follow core patches workflow publishes directly after the same gates.
+# 构建默认保留为工作流产物，只有显式请求时才创建草稿或正式发布。人工发布使用草稿；
+# 跟随核心补丁工作流在相同门禁之后直接正式发布。
 on:
   workflow_dispatch:
     inputs:
@@ -10,11 +12,11 @@ on:
         required: true
         type: string
       mode:
-        description: "Build artifacts only, or create a draft GitHub release after all gates"
+        description: "Build artifacts only, create a draft GitHub release, or publish the release after all gates"
         required: true
         default: candidate
         type: choice
-        options: [candidate, draft]
+        options: [candidate, draft, publish]
 
 permissions:
   contents: read
@@ -175,6 +177,19 @@ jobs:
           gh release create "v$VERSION"
           --repo "$GITHUB_REPOSITORY"
           --draft
+          --target "$GITHUB_SHA"
+          --title "luaskills-debug v$VERSION"
+          --generate-notes
+          dist/*
+      # Follow releases of a core patch publish directly; the gates above are the same as for a draft.
+      # 跟随核心补丁的版本直接发布；上述门禁与草稿相同。
+      - name: Publish the GitHub release
+        if: inputs.mode == 'publish'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "v$VERSION"
+          --repo "$GITHUB_REPOSITORY"
           --target "$GITHUB_SHA"
           --title "luaskills-debug v$VERSION"
           --generate-notes

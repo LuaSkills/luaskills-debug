@@ -1,0 +1,77 @@
+name: Follow core patches
+
+# A LuaSkills core patch keeps its series API and contract, so the debugger follows it on its own: this workflow
+# pins the newest crates.io patch of the embedded series, commits the next debugger patch and publishes it through
+# the Release workflow. A new core minor series is never followed automatically.
+# LuaSkills 核心补丁保持本系列 API 与契约，因此调试工具自动跟随：本工作流固定内嵌系列在 crates.io 上的
+# 最新补丁，提交下一个调试工具补丁，并经 Release 工作流发布。新的核心次版本系列绝不自动跟随。
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [luaskills-core-released]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: luaskills-debug-follow-core
+  cancel-in-progress: false
+
+jobs:
+  follow:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Preserve exact tracked source bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.6"
+      - name: Run follow helper regressions
+        run: python -X utf8 -m unittest discover -s scripts/release -p test_follow_core.py -v
+      - name: Find the newest core patch of the embedded series
+        id: plan
+        run: python -X utf8 scripts/release/follow_core.py plan --github-output "$GITHUB_OUTPUT"
+      - name: Refuse to reuse an existing release tag
+        if: steps.plan.outputs.core != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists" >&2
+            exit 1
+          fi
+      - uses: dtolnay/rust-toolchain@master
+        if: steps.plan.outputs.core != ''
+        with:
+          toolchain: 1.94.0
+      - name: Pin the core patch and build the debugger against it
+        if: steps.plan.outputs.core != ''
+        env:
+          CORE: ${{ steps.plan.outputs.core }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          python -X utf8 scripts/release/follow_core.py apply --core "$CORE" --version "$VERSION"
+          cargo update -p luaskills --precise "$CORE"
+          cargo test --locked -j 4 -- --test-threads=1
+      - name: Commit the follow release and start the Release workflow
+        if: steps.plan.outputs.core != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CORE: ${{ steps.plan.outputs.core }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml Cargo.lock
+          git commit -s -m "release: $VERSION embedding luaskills $CORE" -m "Follows the LuaSkills core patch automatically."
+          git push origin HEAD:main
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f version="$VERSION" -f mode=publish
