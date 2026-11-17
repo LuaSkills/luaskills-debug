@@ -23,7 +23,13 @@ from pathlib import Path
 # 内嵌 crate 的 crates.io 稀疏索引条目：每个已发布版本一个 JSON 对象。
 INDEX_URL = "https://index.crates.io/lu/as/luaskills"
 PACKAGE_VERSION = re.compile(r'(?m)^version = "(?P<version>[^"]+)"(?=\r?$)')
-CORE_REQUIREMENT = re.compile(r'(?m)^luaskills = "=(?P<version>[^"]+)"(?=\r?$)')
+# The Git form pins the published core commit while its crate is absent from the registry.
+# 在注册表尚无对应 crate 时，Git 形式固定已公开发布的核心提交。
+CORE_REQUIREMENT = re.compile(
+    r'(?m)^luaskills = (?:"=(?P<registry>[^"]+)"|'
+    r'\{ version = "=(?P<github>[^"]+)", git = "https://github\.com/LuaSkills/luaskills\.git", '
+    r'rev = "[0-9a-f]{40}" \})(?=\r?$)'
+)
 
 
 def parse_version(version: str) -> tuple[int, int, int]:
@@ -41,10 +47,10 @@ def manifest_versions(manifest: str) -> tuple[str, str]:
     返回 `manifest` 的包版本及精确 `luaskills` 固定版本；两者都必须唯一。
     """
     package = PACKAGE_VERSION.findall(manifest)
-    core = CORE_REQUIREMENT.findall(manifest)
+    core = list(CORE_REQUIREMENT.finditer(manifest))
     if len(package) != 1 or len(core) != 1:
         raise ValueError("Cargo.toml must hold one package version and one exact luaskills pin")
-    return package[0], core[0]
+    return package[0], core[0]["registry"] or core[0]["github"]
 
 
 def published_versions(index: str) -> list[str]:

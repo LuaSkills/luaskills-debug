@@ -167,11 +167,13 @@ fn new_standard_skill_validates_and_packages() {
             && !workflow.contains("{{DEBUG_VERSION}}")
     );
     assert!(!dir.join("dependencies.yaml").exists());
+    assert!(dir.join("skills/hello-workflow/SKILL.md").is_file());
+    assert!(workflow.contains("include: skills"));
 
     let source = SkillSourceOptions {
         skill_dir: dir.clone(),
         skill_id: None,
-        extra_root_names: Vec::new(),
+        extra_root_names: vec!["skills".to_string()],
     };
     let report = validate_skill_source(&source).expect("validate");
     assert!(report.is_valid(), "{:?}", report.issues);

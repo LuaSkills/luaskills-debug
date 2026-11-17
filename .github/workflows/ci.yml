@@ -28,7 +28,7 @@ jobs:
           python-version: "3.14.6"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.0
+          toolchain: 1.99.1
           components: clippy, rustfmt
       - name: Setup MSVC
         if: runner.os == 'Windows'
@@ -67,6 +67,6 @@ jobs:
           python-version: "3.14.6"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.94.0
+          toolchain: 1.99.1
       - name: Run managed-runtime smoke
         run: bash ./scripts/runtime/managed_runtime_smoke.sh

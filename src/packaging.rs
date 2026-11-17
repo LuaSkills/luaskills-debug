@@ -52,12 +52,8 @@ const COMMON_TEMPLATE_FILES: &[TemplateFile] = &[
         text: include_str!("../templates/skill/runtime/hello.lua"),
     },
     TemplateFile {
-        path: "help/help.md",
-        text: include_str!("../templates/skill/help/help.md"),
-    },
-    TemplateFile {
-        path: "help/hello.md",
-        text: include_str!("../templates/skill/help/hello.md"),
+        path: "skills/hello-workflow/SKILL.md",
+        text: include_str!("../templates/skill/skills/hello-workflow/SKILL.md"),
     },
     TemplateFile {
         path: "examples/hello.args.json",
@@ -640,7 +636,7 @@ fn run_new(command: &NewCommand) -> Result<(), String> {
         );
     }
     println!("Next:");
-    println!("  luaskills-debug validate --skill-path {dir}");
+    println!("  luaskills-debug validate --skill-path {dir} --include skills");
     println!(
         "  luaskills-debug call --runtime-root {dir}/.luaskills-debug --skill-path {dir} --tool hello --args-file {dir}/examples/hello.args.json"
     );

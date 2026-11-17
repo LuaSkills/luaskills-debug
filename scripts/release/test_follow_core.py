@@ -34,6 +34,20 @@ class FollowCoreTests(unittest.TestCase):
         self.assertEqual(follow_core.manifest_versions(updated), ("0.9.2", "0.9.2"))
         self.assertIn('serde = "1"', updated)
 
+    def test_new_registry_patch_replaces_a_github_release_pin(self):
+        """Follow a newer published patch when the current core comes from its GitHub release.
+        当前核心来自 GitHub Release 时，跟随更新的注册表补丁。
+        """
+        manifest = MANIFEST.replace(
+            'luaskills = "=0.9.0"',
+            f'luaskills = {{ version = "=0.9.0", git = "https://github.com/LuaSkills/luaskills.git", rev = "{"a" * 40}" }}',
+        )
+        self.assertIsNone(follow_core.plan(manifest, ["0.9.0"]))
+        self.assertEqual(follow_core.plan(manifest, ["0.9.2"]), {"core": "0.9.2", "version": "0.9.2"})
+        updated = follow_core.apply(manifest, "0.9.2", "0.9.2")
+        self.assertIn('luaskills = "=0.9.2"', updated)
+        self.assertNotIn("github.com/LuaSkills/luaskills", updated)
+
     def test_series_mismatch_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "major.minor"):
             follow_core.plan(MANIFEST.replace('"=0.9.0"', '"=0.8.2"'), ["0.8.3"])

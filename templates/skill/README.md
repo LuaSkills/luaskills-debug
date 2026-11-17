@@ -5,9 +5,11 @@
 ## Develop
 
 ```bash
-luaskills-debug validate --skill-path .
+luaskills-debug validate --skill-path . --include skills
 luaskills-debug call --runtime-root .luaskills-debug --skill-path . --tool hello --args-file examples/hello.args.json
 ```
+
+The manifest registers [hello-workflow](skills/hello-workflow/SKILL.md) as the starter guide.
 
 ## Release
 

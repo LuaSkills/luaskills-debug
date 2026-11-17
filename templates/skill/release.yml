@@ -25,6 +25,7 @@ jobs:
         uses: LuaSkills/luaskills-debug@v{{DEBUG_VERSION}}
         with:
           layout: ${{ env.LUASKILLS_PACKAGE_LAYOUT }}
+          include: skills
           expect-tag: ${{ github.ref_name }}
 
       - name: Publish the GitHub release

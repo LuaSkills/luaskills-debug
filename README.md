@@ -34,8 +34,8 @@ Run `luaskills-debug --help` for every option.
 ```bash
 luaskills-debug new my-skill
 luaskills-debug call --runtime-root .luaskills-debug --skill-path my-skill --tool hello --args-json "{\"name\":\"LuaSkills\"}"
-luaskills-debug validate --skill-path my-skill
-luaskills-debug package --skill-path my-skill --out-dir dist
+luaskills-debug validate --skill-path my-skill --include skills
+luaskills-debug package --skill-path my-skill --out-dir dist --include skills
 ```
 
 ### Release layouts
@@ -75,9 +75,10 @@ Skill repositories build releases with this repository's composite action:
 ```yaml
 - uses: actions/checkout@v4
 - id: package
-  uses: LuaSkills/luaskills-debug@v0.9.0
+  uses: LuaSkills/luaskills-debug@v0.9.1
   with:
     layout: standard        # or platform
+    include: skills         # include registered prompt guides under skills/
     expect-tag: ${{ github.ref_name }}
 - run: gh release create "$GITHUB_REF_NAME" --generate-notes "${{ steps.package.outputs.out-dir }}"/*
   env:
@@ -97,7 +98,7 @@ commit `Cargo.lock` while the patch is active.
 ```bash
 cargo test
 cargo build --release
-bash scripts/build/package_debug_tool.sh linux-x64 v0.9.0 target/release-packages
+bash scripts/build/package_debug_tool.sh linux-x64 v0.9.1 target/release-packages
 ```
 
 The managed Python/Node runtime example and its smoke scripts are described in

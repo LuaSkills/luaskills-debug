@@ -5,7 +5,8 @@ use luaskills::{
     LuaRuntimeGithubMirrorProbeResult, LuaRuntimeGithubMirrorProbeTarget, LuaRuntimeHostOptions,
     LuaRuntimeManagedRuntimeConfig, LuaRuntimeSecretString, LuaVmPoolConfig,
     RuntimeEntryDescriptor, RuntimeInvocationResult, RuntimeRequestContext, RuntimeSkillRoot,
-    SkillMeta, builtin_github_mirrors, normalize_github_mirror_base_url, probe_github_mirrors,
+    SkillMeta, SkillRegistration, SkillRegistrationMode, builtin_github_mirrors,
+    normalize_github_mirror_base_url, probe_github_mirrors,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -472,6 +473,10 @@ struct DebugInspectOutput {
     /// Manifest-declared semantic version.
     /// 清单中声明的语义版本号。
     manifest_version: String,
+    /// Validated registration metadata for packages that declare it.
+    /// 声明注册方式的包所对应的已校验注册元数据。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    registration: Option<SkillRegistration>,
     /// Whether the manifest enables debug hot-reload mode.
     /// 清单是否开启 debug 热加载模式。
     debug: bool,
@@ -1454,7 +1459,7 @@ fn resolve_debug_tool_name(
 
     if let Some(entry) = entries
         .iter()
-        .find(|entry| entry.canonical_name == normalized)
+        .find(|entry| entry.canonical_name == normalized || entry.public_tool_name() == normalized)
     {
         return Ok(entry.canonical_name.clone());
     }
@@ -1635,6 +1640,7 @@ fn build_inspect_output(prepared: &PreparedDebugRuntime) -> DebugInspectOutput {
         skill_id: prepared.skill_id.clone(),
         manifest_name: prepared.manifest.name.clone(),
         manifest_version: prepared.manifest.version().to_string(),
+        registration: prepared.manifest.registration.clone(),
         debug: prepared.manifest.debug,
         runtime_root: render_host_visible_path(&prepared.runtime_root),
         source_skill_path: prepared
@@ -1677,6 +1683,18 @@ fn render_inspect_output(mode: DebugOutputMode, output: &DebugInspectOutput) -> 
             println!("skill_id: {}", output.skill_id);
             println!("manifest_name: {}", output.manifest_name);
             println!("manifest_version: {}", output.manifest_version);
+            if let Some(registration) = &output.registration {
+                // Keep the display spelling identical to the manifest.
+                // 显示时使用与清单相同的注册方式拼写。
+                let mode = match registration.mode {
+                    SkillRegistrationMode::Explicit => "explicit",
+                    SkillRegistrationMode::Implicit => "implicit",
+                };
+                println!("registration: {mode}");
+                for guide in &registration.prompt_skills {
+                    println!("  - {} ({})", guide.name, guide.file);
+                }
+            }
             println!("debug: {}", output.debug);
             println!("runtime_root: {}", output.runtime_root);
             if let Some(source_skill_path) = &output.source_skill_path {
@@ -2314,6 +2332,10 @@ mod tests {
         let resolved =
             resolve_debug_tool_name(&entries, "demo-skill-ping").expect("resolve canonical name");
         assert_eq!(resolved, "demo-skill-ping");
+        assert_eq!(
+            resolve_debug_tool_name(&entries, "demo_skill_ping").expect("resolve public name"),
+            "demo-skill-ping"
+        );
     }
 
     /// Build one unique temporary runtime root path for integration-style debug tests.

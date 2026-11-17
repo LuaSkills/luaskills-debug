@@ -891,9 +891,8 @@ dependencies = [
 
 [[package]]
 name = "luaskills"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3993b8ff5960b80f3bef2f7c923b2b1c0c1963b4b9499331a0d5450c7a5c9ce0"
+version = "0.9.1"
+source = "git+https://github.com/LuaSkills/luaskills.git?rev=cb877b0ee6d286f0a493eabbcd775c321e51a386#cb877b0ee6d286f0a493eabbcd775c321e51a386"
 dependencies = [
  "base64 0.22.1",
  "encoding_rs",
@@ -917,7 +916,7 @@ dependencies = [
 
 [[package]]
 name = "luaskills-debug"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "luaskills",
  "rusqlite",

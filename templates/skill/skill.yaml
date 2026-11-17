@@ -2,20 +2,21 @@ name: {{SKILL_NAME}}
 version: 0.1.0
 enable: true
 debug: false
-help:
-  main:
-    description: Main help node for the {{SKILL_ID}} skill.
-    file: help/help.md
-  topics:
-    - name: hello
-      description: Explain the starter hello tool.
-      file: help/hello.md
+registration:
+  mode: explicit
+  default_locale: en-US
+  locales:
+    en-US: {title: Hello, description: Returns a greeting.}
+  prompt_skills:
+    - name: hello-workflow
+      file: skills/hello-workflow/SKILL.md
+      locales:
+        en-US: {title: Hello workflow, description: Use the starter greeting tool.}
 entries:
   - name: hello
     description: Return one greeting; replace it with your first real tool.
     lua_entry: runtime/hello.lua
     lua_module: hello
-    help: hello
     parameters:
       - name: name
         type: string
